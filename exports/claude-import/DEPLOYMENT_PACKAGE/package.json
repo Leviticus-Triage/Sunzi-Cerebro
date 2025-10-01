@@ -1,0 +1,185 @@
+{
+  "name": "sunzi-cerebro-enterprise-deployment",
+  "version": "3.4.0",
+  "description": "Complete All-in-One Deployment Package for Sunzi Cerebro Enterprise AI Security Platform",
+  "main": "deploy.js",
+  "private": false,
+  "license": "MIT",
+  "author": "Sunzi Cerebro Development Team",
+  "keywords": [
+    "cybersecurity",
+    "ai-security",
+    "penetration-testing",
+    "mcp-protocol",
+    "enterprise-security",
+    "security-intelligence"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sunzi-cerebro/enterprise-deployment"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "deploy": "node scripts/deploy.js",
+    "quick-start": "bash quick-start.sh",
+    "setup-mcp": "bash scripts/setup-mcp-servers.sh",
+    "health-check": "node scripts/health-check.js",
+    "start-backend": "cd backend && npm run dev",
+    "start-frontend": "cd frontend && npm start",
+    "build-frontend": "cd frontend && npm run build",
+    "test-deployment": "node scripts/test-deployment.js",
+    "create-archive": "bash scripts/create-deployment-archive.sh",
+    "install-deps": "npm run install-backend && npm run install-frontend",
+    "install-backend": "cd backend && npm install",
+    "install-frontend": "cd frontend && npm install",
+    "docker-up": "docker-compose up -d",
+    "docker-down": "docker-compose down",
+    "docker-logs": "docker-compose logs -f",
+    "docker-health": "docker-compose ps",
+    "setup-ssl": "bash scripts/setup-ssl.sh",
+    "backup-db": "bash scripts/backup-database.sh",
+    "restore-db": "bash scripts/restore-database.sh",
+    "monitoring-up": "docker-compose -f docker-compose.monitoring.yml up -d",
+    "monitoring-down": "docker-compose -f docker-compose.monitoring.yml down"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "inquirer": "^9.2.12",
+    "chalk": "^5.3.0",
+    "ora": "^7.0.1",
+    "figlet": "^1.7.0",
+    "node-fetch": "^3.3.2",
+    "fs-extra": "^11.1.1",
+    "archiver": "^6.0.1",
+    "tar": "^6.2.0",
+    "yaml": "^2.3.4",
+    "semver": "^7.5.4",
+    "cross-spawn": "^7.0.3",
+    "which": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.0",
+    "ts-node": "^10.9.0",
+    "nodemon": "^3.0.0",
+    "eslint": "^8.50.0",
+    "prettier": "^3.0.0"
+  },
+  "deploymentConfig": {
+    "supportedPlatforms": [
+      "linux",
+      "darwin",
+      "win32"
+    ],
+    "minDockerVersion": "24.0.0",
+    "minDockerComposeVersion": "2.20.0",
+    "minNodeVersion": "20.0.0",
+    "minPythonVersion": "3.9.0",
+    "requiredPorts": [
+      3000,
+      8890,
+      5432,
+      6379,
+      9090,
+      3001,
+      8888
+    ],
+    "services": {
+      "frontend": {
+        "name": "Sunzi Cerebro Frontend",
+        "type": "react",
+        "port": 3000,
+        "healthCheck": "/health"
+      },
+      "backend": {
+        "name": "Sunzi Cerebro Backend API",
+        "type": "node",
+        "port": 8890,
+        "healthCheck": "/health"
+      },
+      "database": {
+        "name": "Production Database",
+        "type": "sqlite/postgresql",
+        "port": 5432,
+        "healthCheck": "SELECT 1"
+      },
+      "redis": {
+        "name": "Redis Cache",
+        "type": "redis",
+        "port": 6379,
+        "healthCheck": "PING"
+      },
+      "hexstrike": {
+        "name": "HexStrike AI MCP Server",
+        "type": "python",
+        "port": 8888,
+        "healthCheck": "/health"
+      },
+      "prometheus": {
+        "name": "Prometheus Monitoring",
+        "type": "monitoring",
+        "port": 9090,
+        "healthCheck": "/-/healthy"
+      },
+      "grafana": {
+        "name": "Grafana Dashboards",
+        "type": "monitoring",
+        "port": 3001,
+        "healthCheck": "/api/health"
+      }
+    }
+  },
+  "mcpServers": {
+    "hexstrike-ai": {
+      "name": "HexStrike AI",
+      "tools": 45,
+      "type": "python",
+      "repository": "https://github.com/hexstrike-ai/hexstrike",
+      "port": 8888
+    },
+    "attackmcp": {
+      "name": "AttackMCP",
+      "tools": 7,
+      "type": "python",
+      "repository": "https://github.com/attack-mcp/attackmcp",
+      "port": 8889
+    },
+    "mcp-god-mode": {
+      "name": "MCP God Mode",
+      "tools": 152,
+      "type": "node",
+      "repository": "https://github.com/mcp-god-mode/mcp-god-mode",
+      "port": 8887
+    },
+    "notion-mcp": {
+      "name": "Notion MCP",
+      "tools": 2,
+      "type": "python",
+      "repository": "https://github.com/notion-mcp/notion-mcp",
+      "port": 8886
+    }
+  },
+  "systemRequirements": {
+    "minimum": {
+      "ram": "8GB",
+      "cpu": "4 cores",
+      "disk": "20GB",
+      "os": "Linux/macOS/Windows 10+"
+    },
+    "recommended": {
+      "ram": "16GB",
+      "cpu": "8 cores",
+      "disk": "50GB",
+      "os": "Linux Ubuntu 22.04+ / macOS 12+ / Windows 11+"
+    },
+    "enterprise": {
+      "ram": "32GB",
+      "cpu": "16 cores",
+      "disk": "100GB SSD",
+      "os": "Linux Ubuntu 22.04+ Server Edition"
+    }
+  }
+}

@@ -1,0 +1,86 @@
+name: Release Management
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        uses: github-changelog-generator/github-changelog-generator@v1
+        with:
+          future-release: ${{ steps.get_version.outputs.VERSION }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+          files: |
+            LICENSE
+            README.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    name: Send Notifications
+    needs: create-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              "text": "🎉 New release ${{ github.ref }} has been published!",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*New Release:* ${{ github.ref }}\n*Author:* ${{ github.actor }}\n\nSee the <${{ github.event.release.html_url }}|release notes> for more details."
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: 'New Release: ${{ github.ref }}'
+          body: |
+            A new release has been published!
+
+            Version: ${{ github.ref }}
+            Author: ${{ github.actor }}
+
+            See the release notes for more details:
+            ${{ github.event.release.html_url }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: Sunzi Cerebro Release Bot

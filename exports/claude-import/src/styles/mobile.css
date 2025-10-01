@@ -1,0 +1,594 @@
+/**
+ * Mobile-First Responsive Styles for Sunzi Cerebro PWA
+ * Optimized for touch interfaces on tablets and smartphones
+ */
+
+/* ============================================================================
+   Touch-Optimized Interactive Elements
+   ============================================================================ */
+
+/* Minimum touch target size: 44x44px (Apple HIG) / 48x48px (Material Design) */
+.touch-target {
+  min-width: 48px !important;
+  min-height: 48px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Enhanced tap feedback */
+.touch-feedback {
+  position: relative;
+  -webkit-tap-highlight-color: rgba(0, 50, 124, 0.2);
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.touch-feedback:active {
+  transform: scale(0.98);
+  background-color: rgba(0, 50, 124, 0.05);
+}
+
+/* Prevent text selection on interactive elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ============================================================================
+   Mobile Breakpoints
+   ============================================================================ */
+
+/* Mobile Small (320px - 374px) - iPhone SE, older devices */
+@media (max-width: 374px) {
+  :root {
+    font-size: 14px;
+  }
+
+  .container {
+    padding: 12px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  h2 {
+    font-size: 20px;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+}
+
+/* Mobile Medium (375px - 424px) - iPhone 12/13/14 */
+@media (min-width: 375px) and (max-width: 424px) {
+  :root {
+    font-size: 15px;
+  }
+
+  .container {
+    padding: 16px;
+  }
+}
+
+/* Mobile Large (425px - 767px) - iPhone Pro Max, Android */
+@media (min-width: 425px) and (max-width: 767px) {
+  :root {
+    font-size: 16px;
+  }
+
+  .container {
+    padding: 20px;
+  }
+}
+
+/* Tablet (768px - 1023px) - iPad, Android tablets */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    font-size: 16px;
+  }
+
+  .container {
+    padding: 24px;
+  }
+
+  .grid-tablet-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .grid-tablet-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+}
+
+/* ============================================================================
+   Mobile Navigation Styles
+   ============================================================================ */
+
+@media (max-width: 1023px) {
+  /* Bottom navigation bar for mobile */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: #ffffff;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    min-width: 64px;
+    color: #666;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .mobile-nav-item.active {
+    color: #00327c;
+  }
+
+  .mobile-nav-item:active {
+    transform: scale(0.95);
+  }
+
+  .mobile-nav-icon {
+    font-size: 24px;
+  }
+
+  .mobile-nav-label {
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  /* Hide desktop sidebar */
+  .desktop-sidebar {
+    display: none !important;
+  }
+
+  /* Adjust main content for bottom nav */
+  main {
+    padding-bottom: 80px !important;
+  }
+}
+
+/* ============================================================================
+   Touch-Optimized Cards & Panels
+   ============================================================================ */
+
+@media (max-width: 767px) {
+  .card {
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* Expand card on touch for better visibility */
+  .expandable-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .expandable-card.expanded {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 10;
+  }
+}
+
+@media (min-width: 768px) {
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ============================================================================
+   Mobile Tool Execution Interface
+   ============================================================================ */
+
+@media (max-width: 767px) {
+  .tool-execution-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 85vh;
+    background: #ffffff;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    z-index: 1100;
+    overflow: hidden;
+  }
+
+  .tool-execution-panel.open {
+    transform: translateY(0);
+  }
+
+  .tool-panel-handle {
+    height: 4px;
+    width: 48px;
+    background: #ddd;
+    border-radius: 2px;
+    margin: 12px auto;
+  }
+
+  .tool-panel-content {
+    padding: 16px;
+    max-height: calc(85vh - 32px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tool-output-terminal {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    padding: 12px;
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ============================================================================
+   Strategic Framework Mobile Optimization
+   ============================================================================ */
+
+@media (max-width: 767px) {
+  .strategic-module {
+    padding: 16px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  }
+
+  .strategic-module-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .strategic-module-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #00327c;
+  }
+
+  .strategic-module-subtitle {
+    font-size: 14px;
+    color: #666;
+    margin-top: 4px;
+  }
+
+  .strategic-module-expand-icon {
+    font-size: 24px;
+    color: #00327c;
+    transition: transform 0.2s ease;
+  }
+
+  .strategic-module.expanded .strategic-module-expand-icon {
+    transform: rotate(180deg);
+  }
+
+  .strategic-module-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .strategic-module.expanded .strategic-module-content {
+    max-height: 1000px;
+  }
+}
+
+/* ============================================================================
+   Mobile Forms & Inputs
+   ============================================================================ */
+
+@media (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 12px;
+    border-radius: 8px;
+    border: 2px solid #e0e0e0;
+    width: 100%;
+    transition: border-color 0.2s ease;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: #00327c;
+    outline: none;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .input-group {
+    position: relative;
+  }
+
+  .input-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    font-size: 20px;
+  }
+
+  .input-with-icon {
+    padding-left: 44px;
+  }
+}
+
+/* ============================================================================
+   Mobile Alerts & Notifications
+   ============================================================================ */
+
+@media (max-width: 767px) {
+  .mobile-notification {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    transform: translateY(-120%);
+    transition: transform 0.3s ease;
+  }
+
+  .mobile-notification.show {
+    transform: translateY(0);
+  }
+
+  .mobile-notification.critical {
+    background: #ff5252;
+    color: #ffffff;
+  }
+
+  .mobile-notification.warning {
+    background: #ff9800;
+    color: #ffffff;
+  }
+
+  .mobile-notification.success {
+    background: #4caf50;
+    color: #ffffff;
+  }
+
+  .mobile-notification.info {
+    background: #2196f3;
+    color: #ffffff;
+  }
+}
+
+/* ============================================================================
+   Safe Area Insets (iPhone X+, Android with notch)
+   ============================================================================ */
+
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .safe-area-all {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* ============================================================================
+   Swipe Gestures
+   ============================================================================ */
+
+.swipeable {
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.swipe-indicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 24px;
+  color: #00327c;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.swipe-indicator.left {
+  left: 16px;
+}
+
+.swipe-indicator.right {
+  right: 16px;
+}
+
+.swiping .swipe-indicator {
+  opacity: 1;
+}
+
+/* ============================================================================
+   Pull to Refresh
+   ============================================================================ */
+
+.pull-to-refresh {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 50, 124, 0.9);
+  color: #ffffff;
+  border-radius: 0 0 16px 16px;
+  font-weight: 500;
+  transition: transform 0.3s ease;
+}
+
+.pull-to-refresh.visible {
+  transform: translate(-50%, 0);
+}
+
+.pull-to-refresh-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================================
+   Landscape Orientation Optimizations
+   ============================================================================ */
+
+@media (max-width: 1023px) and (orientation: landscape) {
+  .mobile-bottom-nav {
+    height: 48px;
+  }
+
+  .mobile-nav-item {
+    padding: 4px 8px;
+  }
+
+  .mobile-nav-label {
+    display: none;
+  }
+
+  main {
+    padding-bottom: 60px !important;
+  }
+
+  .tool-execution-panel {
+    max-height: 75vh;
+  }
+}
+
+/* ============================================================================
+   Dark Mode Support
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: #1e1e1e;
+    color: #e0e0e0;
+  }
+
+  .mobile-bottom-nav {
+    background: #2c2c2c;
+    border-top: 1px solid #444;
+  }
+
+  .mobile-nav-item {
+    color: #999;
+  }
+
+  .mobile-nav-item.active {
+    color: #4a90e2;
+  }
+
+  input,
+  select,
+  textarea {
+    background: #2c2c2c;
+    color: #e0e0e0;
+    border-color: #444;
+  }
+
+  .mobile-notification {
+    background: #2c2c2c;
+    color: #e0e0e0;
+  }
+}
+
+/* ============================================================================
+   Reduced Motion Support (Accessibility)
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

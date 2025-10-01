@@ -1,0 +1,248 @@
+---
+# Grafana ConfigMap for datasources
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: grafana
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+        editable: false
+
+---
+# Grafana ConfigMap for dashboards
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: grafana
+data:
+  dashboard.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'Sunzi Cerebro'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards
+
+  sunzi-cerebro-overview.json: |
+    {
+      "dashboard": {
+        "title": "Sunzi Cerebro - Production Overview",
+        "tags": ["sunzi-cerebro", "production"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Backend Instances",
+            "type": "stat",
+            "targets": [{
+              "expr": "count(up{job=\"sunzi-cerebro-backend\"} == 1)"
+            }],
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0}
+          },
+          {
+            "title": "Frontend Instances",
+            "type": "stat",
+            "targets": [{
+              "expr": "count(up{job=\"sunzi-cerebro-frontend\"} == 1)"
+            }],
+            "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0}
+          },
+          {
+            "title": "Total Requests/sec",
+            "type": "stat",
+            "targets": [{
+              "expr": "sum(rate(http_requests_total{job=\"sunzi-cerebro-backend\"}[5m]))"
+            }],
+            "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0}
+          },
+          {
+            "title": "Error Rate",
+            "type": "stat",
+            "targets": [{
+              "expr": "sum(rate(http_requests_total{job=\"sunzi-cerebro-backend\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"sunzi-cerebro-backend\"}[5m])) * 100"
+            }],
+            "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0}
+          },
+          {
+            "title": "Request Rate Over Time",
+            "type": "graph",
+            "targets": [{
+              "expr": "sum(rate(http_requests_total{job=\"sunzi-cerebro-backend\"}[5m])) by (method)"
+            }],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
+          },
+          {
+            "title": "Response Time (P95)",
+            "type": "graph",
+            "targets": [{
+              "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"sunzi-cerebro-backend\"}[5m]))"
+            }],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
+          },
+          {
+            "title": "Backend CPU Usage",
+            "type": "graph",
+            "targets": [{
+              "expr": "rate(container_cpu_usage_seconds_total{pod=~\"sunzi-cerebro-backend.*\"}[5m])"
+            }],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12}
+          },
+          {
+            "title": "Backend Memory Usage",
+            "type": "graph",
+            "targets": [{
+              "expr": "container_memory_usage_bytes{pod=~\"sunzi-cerebro-backend.*\"}"
+            }],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12}
+          }
+        ]
+      }
+    }
+
+---
+# Grafana Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sunzi-cerebro
+      component: grafana
+  template:
+    metadata:
+      labels:
+        app: sunzi-cerebro
+        component: grafana
+    spec:
+      securityContext:
+        fsGroup: 472
+        runAsUser: 472
+      containers:
+        - name: grafana
+          image: grafana/grafana:10.0.0
+          ports:
+            - name: grafana
+              containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: "admin"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana-admin
+                  key: password
+            - name: GF_INSTALL_PLUGINS
+              value: "grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel"
+            - name: GF_SERVER_ROOT_URL
+              value: "https://monitoring.sunzi-cerebro.com"
+            - name: GF_ANALYTICS_REPORTING_ENABLED
+              value: "false"
+            - name: GF_ANALYTICS_CHECK_FOR_UPDATES
+              value: "false"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          volumeMounts:
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboards-config
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+            - name: storage
+              mountPath: /var/lib/grafana
+      volumes:
+        - name: datasources
+          configMap:
+            name: grafana-datasources
+        - name: dashboards-config
+          configMap:
+            name: grafana-dashboards
+            items:
+              - key: dashboard.yaml
+                path: dashboard.yaml
+        - name: dashboards
+          configMap:
+            name: grafana-dashboards
+        - name: storage
+          emptyDir: {}
+
+---
+# Grafana Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: grafana
+spec:
+  type: ClusterIP
+  ports:
+    - name: grafana
+      port: 3000
+      targetPort: 3000
+  selector:
+    app: sunzi-cerebro
+    component: grafana
+
+---
+# Grafana Admin Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-admin
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: grafana
+type: Opaque
+stringData:
+  password: "CHANGE_ME_grafana_admin_password"
+
+---
+# Basic Auth Secret for Grafana Ingress
+apiVersion: v1
+kind: Secret
+metadata:
+  name: grafana-basic-auth
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: grafana
+type: Opaque
+stringData:
+  # Generated with: htpasswd -nb admin password
+  # Default: admin / admin123
+  auth: "admin:$apr1$ruca84Hq$mbjdMZBAG.KWn7vfN/SNK/"

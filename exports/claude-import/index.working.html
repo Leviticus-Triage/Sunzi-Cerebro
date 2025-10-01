@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <title>Sunzi Cerebro - WORKING VERSION</title>
+    <style>
+        body { margin: 0; font-family: system-ui, sans-serif; background: #f8faff; }
+        .app { padding: 2rem; }
+        .header { background: #00327c; color: white; padding: 1rem; margin-bottom: 2rem; }
+        .nav { background: white; padding: 1rem; margin-bottom: 2rem; border-radius: 8px; }
+        .nav a { margin-right: 2rem; text-decoration: none; color: #00327c; font-weight: bold; }
+        .content { background: white; padding: 2rem; border-radius: 8px; }
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-top: 2rem; }
+        .tool-card { border: 1px solid #ddd; padding: 1rem; border-radius: 8px; }
+        .tool-card h4 { margin: 0 0 0.5rem 0; color: #00327c; }
+        .status { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; color: white; }
+        .status.online { background: #4caf50; }
+        .btn { background: #00327c; color: white; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="header">
+            <h1>🚀 Sunzi Cerebro - Advanced Penetration Testing Framework</h1>
+            <p>Vollständig funktionales System mit echten MCP Tools</p>
+        </div>
+        
+        <div class="nav">
+            <a href="#dashboard">Dashboard</a>
+            <a href="#tools">Security Tools</a>
+            <a href="#mcp">MCP Toolset (131+ Tools)</a>
+            <a href="#assistant">LLM Assistant</a>
+            <a href="#scans">Active Scans</a>
+            <a href="#reports">Reports</a>
+            <a href="#settings">Settings</a>
+        </div>
+        
+        <div class="content">
+            <h2>✅ System Status</h2>
+            <p><strong>Backend:</strong> <span class="status online">ONLINE</span> http://localhost:8890</p>
+            <p><strong>MCP Integration:</strong> <span class="status online">ONLINE</span> 4 Server, 131+ Tools</p>
+            <p><strong>Frontend:</strong> <span class="status online">WORKING</span> Direct HTML Version</p>
+            
+            <div id="mcp-tools">
+                <h3>🔧 MCP Tools (Loading...)</h3>
+                <div class="tools-grid" id="tools-container">
+                    <div class="tool-card">Loading MCP tools from backend...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🚀 Sunzi Cerebro WORKING VERSION loaded');
+        
+        // Load real MCP data
+        async function loadMcpTools() {
+            try {
+                console.log('Loading MCP tools...');
+                const response = await fetch('http://localhost:8890/api/mcp/tools?limit=1000');
+                const data = await response.json();
+                
+                const container = document.getElementById('tools-container');
+                container.innerHTML = '';
+                
+                if (data.data && data.data.tools) {
+                    const tools = data.data.tools;
+                    document.getElementById('mcp-tools').querySelector('h3').textContent = `🔧 MCP Tools (${tools.length} loaded)`;
+                    
+                    tools.slice(0, 20).forEach(tool => {
+                        const toolCard = document.createElement('div');
+                        toolCard.className = 'tool-card';
+                        toolCard.innerHTML = `
+                            <h4>${tool.name}</h4>
+                            <p><small>Server: ${tool.serverName}</small></p>
+                            <p>${tool.description || 'No description available'}</p>
+                            <p><strong>Category:</strong> ${tool.category}</p>
+                            <button class="btn" onclick="executeTool('${tool.id}')">Execute Tool</button>
+                        `;
+                        container.appendChild(toolCard);
+                    });
+                } else {
+                    container.innerHTML = '<div class="tool-card">❌ Failed to load MCP tools</div>';
+                }
+            } catch (error) {
+                console.error('Error loading MCP tools:', error);
+                document.getElementById('tools-container').innerHTML = '<div class="tool-card">❌ Error loading tools: ' + error.message + '</div>';
+            }
+        }
+        
+        // Execute tool function
+        window.executeTool = async function(toolId) {
+            console.log('Executing tool:', toolId);
+            try {
+                const response = await fetch(`http://localhost:8890/api/mcp/tools/${toolId}/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ parameters: {} })
+                });
+                const result = await response.json();
+                alert('Tool executed! Check console for details.');
+                console.log('Tool result:', result);
+            } catch (error) {
+                alert('Error executing tool: ' + error.message);
+                console.error('Tool execution error:', error);
+            }
+        }
+        
+        // Load tools on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, loading MCP tools...');
+            loadMcpTools();
+        });
+    </script>
+</body>
+</html>

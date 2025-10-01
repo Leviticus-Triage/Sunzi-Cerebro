@@ -1,0 +1,121 @@
+# Sunzi Cerebro Enterprise - Conda Environment
+# Complete AI Stack Environment for Cross-Platform Deployment
+# Compatible with: Windows, macOS, Linux
+
+name: sunzi-cerebro-enterprise
+channels:
+  - conda-forge
+  - defaults
+  - anaconda
+  - pytorch
+  - nvidia
+
+dependencies:
+  # Python Environment
+  - python=3.11
+  - pip>=23.0
+  - setuptools>=65.0
+  - wheel>=0.38
+
+  # Core System Libraries
+  - openssl>=3.1
+  - libffi>=3.4
+  - zlib>=1.2
+  - sqlite>=3.42
+  - curl>=8.0
+  - git>=2.40
+
+  # Database Systems
+  - postgresql>=15.0
+  - redis>=7.0
+  - sqlite>=3.42
+
+  # Node.js for Backend
+  - nodejs>=20.0
+  - npm>=10.0
+
+  # Python Scientific Stack
+  - numpy>=1.24
+  - pandas>=2.1
+  - matplotlib>=3.7
+  - seaborn>=0.12
+  - scipy>=1.11
+  - scikit-learn>=1.3
+
+  # Network & Security Tools
+  - nmap>=7.9
+  - wireshark>=4.0
+  - tcpdump>=4.9
+  - openssl>=3.1
+  - ca-certificates
+
+  # Development Tools
+  - jupyter>=1.0
+  - ipython>=8.14
+  - pytest>=7.4
+  - black>=23.7
+  - flake8>=6.0
+
+  # System Monitoring
+  - htop
+  - iotop
+  - netstat-nat
+  - lsof
+
+  # Docker & Container Support
+  - docker-compose>=2.20
+
+  # Pip Dependencies (not available in conda)
+  - pip:
+    # MCP Protocol & AI
+    - anthropic-mcp>=0.3.0
+    - openai>=1.3.0
+    - fastapi>=0.104.0
+    - uvicorn[standard]>=0.24.0
+
+    # Security Tools
+    - python-nmap>=0.7.1
+    - scapy>=2.5.0
+    - shodan>=1.29.0
+    - censys>=2.2.0
+    - yara-python>=4.3.0
+
+    # Authentication & Security
+    - python-jose[cryptography]>=3.3.0
+    - passlib[bcrypt]>=1.7.4
+    - cryptography>=41.0.0
+
+    # Web & API
+    - selenium>=4.15.0
+    - beautifulsoup4>=4.12.0
+    - httpx>=0.25.0
+    - websockets>=11.0.0
+
+    # File Processing
+    - python-docx>=0.8.11
+    - PyPDF2>=3.0.0
+    - openpyxl>=3.1.0
+
+    # Monitoring & Logging
+    - prometheus-client>=0.18.0
+    - structlog>=23.1.0
+    - grafana-api>=1.0.3
+
+    # Performance
+    - uvloop>=0.19.0
+    - orjson>=3.9.0
+    - redis>=5.0.0
+
+    # Cloud Support
+    - docker>=6.1.0
+    - boto3>=1.29.0
+    - azure-identity>=1.14.0
+    - google-cloud-core>=2.3.0
+
+# Post-installation commands
+# Run these after environment creation:
+# conda activate sunzi-cerebro-enterprise
+# npm install -g typescript ts-node nodemon
+# npm install -g @angular/cli (if using Angular components)
+# docker --version  # Verify Docker installation
+# python -c "import anthropic; print('MCP Support: OK')"

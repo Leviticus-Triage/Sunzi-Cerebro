@@ -1,0 +1,121 @@
+---
+# Persistent Volume Claim for SQLite Database
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sunzi-cerebro-db-pvc
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+    component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd
+
+---
+# Persistent Volume Claim for Application Logs
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sunzi-cerebro-logs-pvc
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+    component: logging
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: standard
+
+---
+# Persistent Volume Claim for MCP Tool Data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sunzi-cerebro-mcp-data-pvc
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+    component: mcp
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: standard
+
+---
+# Persistent Volume Claim for Redis Data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data-pvc
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+    component: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: fast-ssd
+
+---
+# Persistent Volume Claim for Scan Results
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sunzi-cerebro-scans-pvc
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+    component: scans
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: standard
+
+---
+# StorageClass for fast SSD (if not already defined)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-ssd
+  labels:
+    app: sunzi-cerebro
+provisioner: kubernetes.io/aws-ebs  # Change based on cloud provider
+parameters:
+  type: gp3
+  iops: "3000"
+  throughput: "125"
+  encrypted: "true"
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer
+
+---
+# StorageClass for standard storage
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: standard
+  labels:
+    app: sunzi-cerebro
+provisioner: kubernetes.io/aws-ebs  # Change based on cloud provider
+parameters:
+  type: gp2
+  encrypted: "true"
+allowVolumeExpansion: true
+volumeBindingMode: WaitForFirstConsumer

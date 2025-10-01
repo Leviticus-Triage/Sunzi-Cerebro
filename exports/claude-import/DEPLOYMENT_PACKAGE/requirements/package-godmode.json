@@ -1,0 +1,64 @@
+{
+  "name": "mcp-god-mode-deployment",
+  "version": "1.7.3",
+  "description": "MCP God Mode Server - 152+ Professional Security Tools",
+  "main": "dist/server-modular.js",
+  "scripts": {
+    "install": "npm install",
+    "build": "npm run compile",
+    "compile": "tsc -p .",
+    "start": "node dist/server-modular.js",
+    "start:minimal": "node dist/server-minimal.js",
+    "dev": "tsc -p . && node dist/server-modular.js",
+    "test": "echo \"MCP God Mode tests not implemented\" && exit 0"
+  },
+  "keywords": [
+    "mcp",
+    "ai",
+    "automation",
+    "security",
+    "cross-platform",
+    "penetration-testing",
+    "cybersecurity"
+  ],
+  "author": "MCP God Mode Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.2.0",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "deployment": {
+    "tools": 152,
+    "categories": [
+      "File System Operations",
+      "Process Management",
+      "Network Tools",
+      "System Information",
+      "Security Analysis",
+      "Development Tools",
+      "Database Operations",
+      "Cloud Operations",
+      "Container Management",
+      "Monitoring",
+      "Email Processing",
+      "Media Tools",
+      "Archive Operations",
+      "Backup & Recovery",
+      "System Administration"
+    ],
+    "features": [
+      "Cross-platform compatibility",
+      "Elevated permissions support",
+      "Real-time execution",
+      "Comprehensive error handling",
+      "Performance monitoring",
+      "Secure execution environment"
+    ]
+  }
+}

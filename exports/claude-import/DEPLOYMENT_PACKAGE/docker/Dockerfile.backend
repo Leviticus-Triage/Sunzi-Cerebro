@@ -1,0 +1,50 @@
+# Sunzi Cerebro Backend - Production Dockerfile
+# Node.js with SQLite production deployment
+
+FROM node:20-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    sqlite \
+    python3 \
+    py3-pip \
+    build-base \
+    python3-dev
+
+# Create app directory
+WORKDIR /app
+
+# Create app user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S sunzi -u 1001
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p data logs exports backups
+RUN chown -R sunzi:nodejs /app
+
+# Health check script
+COPY docker/healthcheck.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+# Switch to app user
+USER sunzi
+
+# Expose port
+EXPOSE 8890
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD /usr/local/bin/healthcheck.sh
+
+# Start the application
+CMD ["node", "server.js"]

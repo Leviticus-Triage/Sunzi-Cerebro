@@ -1,0 +1,311 @@
+# Docker Compose for Sunzi Cerebro Enterprise
+# Complete production-ready orchestration
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: sunzi-cerebro-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sunzi_cerebro
+      POSTGRES_USER: sunzi_cerebro
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-cerebro_production_2025}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./docker/postgres.conf:/etc/postgresql/postgresql.conf:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - sunzi-network
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.7
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sunzi_cerebro -d sunzi_cerebro"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: sunzi-cerebro-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis.conf:/etc/redis/redis.conf:ro
+    networks:
+      - sunzi-network
+    command: redis-server /etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Sunzi Cerebro Main Application
+  sunzi-cerebro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: sunzi-cerebro-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=8890
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=sunzi_cerebro
+      - DB_USER=sunzi_cerebro
+      - DB_PASSWORD=${DB_PASSWORD:-cerebro_production_2025}
+      - DB_SSL=false
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-sunzi-cerebro-enterprise-jwt-secret-2025}
+      - SESSION_SECRET=${SESSION_SECRET:-sunzi-cerebro-session-secret-2025}
+      - RATE_LIMIT_WINDOW=900000
+      - RATE_LIMIT_MAX=1000
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    ports:
+      - "${APP_PORT:-8890}:8890"
+    volumes:
+      - app_data:/app/data
+      - app_logs:/app/logs
+      - app_exports:/app/exports
+      - app_backups:/app/backups
+    networks:
+      - sunzi-network
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # HexStrike AI Server
+  hexstrike-ai:
+    image: python:3.11-slim
+    container_name: sunzi-cerebro-hexstrike
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - PYTHONPATH=/app
+      - HEXSTRIKE_HOST=0.0.0.0
+      - HEXSTRIKE_PORT=8888
+    ports:
+      - "${HEXSTRIKE_PORT:-8888}:8888"
+    volumes:
+      - ${HEXSTRIKE_PATH:-/home/danii/hexstrike-ai}:/app:ro
+      - hexstrike_data:/app/data
+    networks:
+      - sunzi-network
+    command: >
+      sh -c "
+        pip install --no-cache-dir fastapi uvicorn requests python-multipart &&
+        python hexstrike_server.py --host 0.0.0.0 --port 8888
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # MCP-God-Mode Server
+  mcp-god-mode:
+    image: node:20-alpine
+    container_name: sunzi-cerebro-godmode
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      - NODE_ENV=production
+      - MCP_SERVER_NAME=mcp-god-mode
+    volumes:
+      - ${MCP_GODMODE_PATH:-/home/danii/MCP-God-Mode}:/app:ro
+      - godmode_data:/app/data
+    networks:
+      - sunzi-network
+    command: >
+      sh -c "
+        cd dev &&
+        npm install --production &&
+        node dist/server-modular.js
+      "
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: sunzi-cerebro-prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - sunzi-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: sunzi-cerebro-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-sunzi-cerebro-2025}
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET:-sunzi-cerebro-grafana-secret}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - sunzi-network
+
+  # NGINX Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: sunzi-cerebro-nginx
+    restart: unless-stopped
+    depends_on:
+      - sunzi-cerebro
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - sunzi-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backup Service
+  backup:
+    image: postgres:16-alpine
+    container_name: sunzi-cerebro-backup
+    restart: "no"
+    depends_on:
+      - postgres
+    environment:
+      - PGPASSWORD=${DB_PASSWORD:-cerebro_production_2025}
+    volumes:
+      - app_backups:/backups
+      - ./docker/backup.sh:/usr/local/bin/backup.sh:ro
+    networks:
+      - sunzi-network
+    command: ["sh", "/usr/local/bin/backup.sh"]
+    profiles:
+      - backup
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
+
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
+
+  app_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/app
+
+  app_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./logs
+
+  app_exports:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./exports
+
+  app_backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./backups
+
+  hexstrike_data:
+    driver: local
+
+  godmode_data:
+    driver: local
+
+  prometheus_data:
+    driver: local
+
+  grafana_data:
+    driver: local
+
+  nginx_logs:
+    driver: local
+
+networks:
+  sunzi-network:
+    driver: bridge
+    name: sunzi-cerebro-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

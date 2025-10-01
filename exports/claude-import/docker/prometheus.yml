@@ -1,0 +1,159 @@
+# Prometheus Configuration for Sunzi Cerebro Enterprise
+# Comprehensive monitoring and alerting setup
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: 'sunzi-cerebro-enterprise'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+      timeout: 10s
+      api_version: v2
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configuration
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Sunzi Cerebro main application
+  - job_name: 'sunzi-cerebro-api'
+    static_configs:
+      - targets: ['sunzi-cerebro:8890']
+    scrape_interval: 15s
+    metrics_path: /api/metrics
+    scheme: http
+    basic_auth:
+      username: 'monitoring'
+      password: 'cerebro_metrics_2025'
+    scrape_timeout: 10s
+
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # PostgreSQL metrics
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+
+  # Redis metrics
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  # NGINX metrics
+  - job_name: 'nginx-exporter'
+    static_configs:
+      - targets: ['nginx:8080']
+    scrape_interval: 30s
+    metrics_path: /nginx_status
+
+  # HexStrike AI server
+  - job_name: 'hexstrike-ai'
+    static_configs:
+      - targets: ['hexstrike-ai:8888']
+    scrape_interval: 30s
+    metrics_path: /metrics
+    scheme: http
+
+  # Docker container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 30s
+
+  # Custom application metrics
+  - job_name: 'sunzi-cerebro-tools'
+    static_configs:
+      - targets: ['sunzi-cerebro:8890']
+    scrape_interval: 15s
+    metrics_path: /api/tools/metrics
+    scheme: http
+
+  # Security monitoring
+  - job_name: 'security-metrics'
+    static_configs:
+      - targets: ['sunzi-cerebro:8890']
+    scrape_interval: 60s
+    metrics_path: /api/security/metrics
+    scheme: http
+
+  # MCP servers monitoring
+  - job_name: 'mcp-servers'
+    static_configs:
+      - targets: ['sunzi-cerebro:8890']
+    scrape_interval: 30s
+    metrics_path: /api/mcp/metrics
+    scheme: http
+
+  # Grafana metrics
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    scrape_interval: 60s
+    metrics_path: /metrics
+
+# Remote write configuration for long-term storage
+remote_write:
+  - url: "http://prometheus-remote-storage:9201/write"
+    name: "long-term-storage"
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 200
+      capacity: 2500
+
+# Recording rules for performance optimization
+recording_rules:
+  - name: sunzi_cerebro_performance
+    interval: 30s
+    rules:
+      - record: sunzi_cerebro:request_rate_5m
+        expr: rate(http_requests_total[5m])
+
+      - record: sunzi_cerebro:error_rate_5m
+        expr: rate(http_requests_total{code=~"5.."}[5m])
+
+      - record: sunzi_cerebro:response_time_95p
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+
+      - record: sunzi_cerebro:tool_execution_rate
+        expr: rate(tool_executions_total[5m])
+
+      - record: sunzi_cerebro:database_connections_active
+        expr: postgres_stat_activity_count{state="active"}
+
+# Storage configuration
+storage:
+  tsdb:
+    path: /prometheus
+    retention.time: 90d
+    retention.size: 50GB
+    wal-compression: true
+    no-lockfile: false
+
+# Feature flags
+feature_flags:
+  - expand-external-labels
+  - memory-snapshot-on-shutdown
+  - promql-at-modifier
+  - remote-write-receiver

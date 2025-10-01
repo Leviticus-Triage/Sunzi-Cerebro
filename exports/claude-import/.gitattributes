@@ -1,0 +1,58 @@
+# Git attributes for Sunzi Cerebro project
+
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Explicitly declare text files
+*.md text
+*.txt text
+*.json text
+*.js text
+*.ts text
+*.tsx text
+*.jsx text
+*.css text
+*.scss text
+*.html text
+*.xml text
+*.yml text
+*.yaml text
+
+# Explicitly declare binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+*.rar binary
+
+# Database files
+*.sqlite binary
+*.db binary
+
+# Documents
+*.pdf binary
+*.doc binary
+*.docx binary
+
+# Exclude files from export
+.gitattributes export-ignore
+.gitignore export-ignore
+.github export-ignore
+*.log export-ignore
+*.sqlite export-ignore
+node_modules export-ignore
+dist export-ignore
+build export-ignore

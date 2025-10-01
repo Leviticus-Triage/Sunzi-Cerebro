@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sunzi-cerebro
+  labels:
+    name: sunzi-cerebro
+    environment: production
+    app: sunzi-cerebro
+    managed-by: kubernetes
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sunzi-cerebro-monitoring
+  labels:
+    name: sunzi-cerebro-monitoring
+    environment: production
+    app: sunzi-cerebro
+    managed-by: kubernetes
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sunzi-cerebro-logging
+  labels:
+    name: sunzi-cerebro-logging
+    environment: production
+    app: sunzi-cerebro
+    managed-by: kubernetes
