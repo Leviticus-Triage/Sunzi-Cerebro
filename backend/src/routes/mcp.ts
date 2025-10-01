@@ -28,7 +28,9 @@ router.get('/tools/:id', requireAuth, (req, res) => {
 
 // Activate/deactivate tool
 router.post('/tools/:id/activate', requireAuth, (req, res) => {
-  const t = activateTool(req.params.id);
+  const toolId = req.params.id;
+  if (!toolId) return res.status(400).json({ message: 'Tool ID is required' });
+  const t = activateTool(toolId);
   if (!t) return res.status(404).json({ message: 'Tool not found' });
   
   // Add health metrics
