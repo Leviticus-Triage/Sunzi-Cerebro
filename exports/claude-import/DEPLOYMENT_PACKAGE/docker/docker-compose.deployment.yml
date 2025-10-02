@@ -1,0 +1,249 @@
+# Sunzi Cerebro Enterprise - Production Docker Compose
+# Complete stack deployment with all MCP servers and monitoring
+version: '3.8'
+
+services:
+  # SQLite-based Backend (Production Ready)
+  sunzi-cerebro-backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: sunzi-cerebro-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - PORT=8890
+      - DB_TYPE=sqlite
+      - DB_PATH=/app/data/sunzi_cerebro_prod.sqlite
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - HEXSTRIKE_URL=http://hexstrike-ai:8888
+      - CORS_ORIGIN=http://localhost:${FRONTEND_PORT:-3000}
+      - LOG_LEVEL=info
+    ports:
+      - "${BACKEND_PORT:-8890}:8890"
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+      - backend_exports:/app/exports
+      - backend_backups:/app/backups
+    networks:
+      - sunzi-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8890/api/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - hexstrike-ai
+
+  # React Frontend
+  sunzi-cerebro-frontend:
+    build:
+      context: ../
+      dockerfile: Dockerfile.frontend
+    container_name: sunzi-cerebro-frontend
+    restart: unless-stopped
+    environment:
+      - VITE_API_BASE_URL=http://localhost:${BACKEND_PORT:-8890}
+      - VITE_WS_URL=ws://localhost:${BACKEND_PORT:-8890}
+      - VITE_ENVIRONMENT=production
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    networks:
+      - sunzi-network
+    depends_on:
+      - sunzi-cerebro-backend
+
+  # HexStrike AI MCP Server (45+ Security Tools)
+  hexstrike-ai:
+    build:
+      context: ../mcp-servers/hexstrike-ai
+      dockerfile: Dockerfile
+    container_name: sunzi-cerebro-hexstrike
+    restart: unless-stopped
+    environment:
+      - PYTHONPATH=/app
+      - HEXSTRIKE_HOST=0.0.0.0
+      - HEXSTRIKE_PORT=8888
+      - HEXSTRIKE_DEBUG=false
+    ports:
+      - "${HEXSTRIKE_PORT:-8888}:8888"
+    volumes:
+      - hexstrike_data:/app/data
+      - hexstrike_results:/app/results
+    networks:
+      - sunzi-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  # AttackMCP Server (7+ Network Assessment Tools)
+  attackmcp:
+    build:
+      context: ../mcp-servers/attackmcp
+      dockerfile: Dockerfile
+    container_name: sunzi-cerebro-attackmcp
+    restart: unless-stopped
+    environment:
+      - PYTHONPATH=/app
+      - MCP_SERVER_NAME=attackmcp
+    volumes:
+      - attackmcp_data:/app/data
+      - attackmcp_results:/app/results
+    networks:
+      - sunzi-network
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # MCP-God-Mode Server (152+ Professional Tools)
+  mcp-god-mode:
+    build:
+      context: ../mcp-servers/MCP-God-Mode
+      dockerfile: Dockerfile
+    container_name: sunzi-cerebro-godmode
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - MCP_SERVER_NAME=mcp-god-mode
+    volumes:
+      - godmode_data:/app/data
+    networks:
+      - sunzi-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis Cache (Performance Optimization)
+  redis:
+    image: redis:7-alpine
+    container_name: sunzi-cerebro-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sunzi-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: sunzi-cerebro-prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - sunzi-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: sunzi-cerebro-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=sunzi-cerebro-2025
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - sunzi-network
+    depends_on:
+      - prometheus
+
+  # NGINX Reverse Proxy (Optional)
+  nginx:
+    image: nginx:alpine
+    container_name: sunzi-cerebro-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - sunzi-network
+    depends_on:
+      - sunzi-cerebro-frontend
+      - sunzi-cerebro-backend
+    profiles:
+      - production
+
+volumes:
+  # Backend volumes
+  backend_data:
+    driver: local
+  backend_logs:
+    driver: local
+  backend_exports:
+    driver: local
+  backend_backups:
+    driver: local
+
+  # MCP Server volumes
+  hexstrike_data:
+    driver: local
+  hexstrike_results:
+    driver: local
+  attackmcp_data:
+    driver: local
+  attackmcp_results:
+    driver: local
+  godmode_data:
+    driver: local
+
+  # Infrastructure volumes
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  sunzi-network:
+    driver: bridge
+    name: sunzi-cerebro-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Production deployment profiles
+# Use: docker-compose --profile production up -d
+# This will include NGINX reverse proxy and SSL termination

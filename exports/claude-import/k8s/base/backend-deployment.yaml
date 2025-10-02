@@ -1,0 +1,201 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sunzi-cerebro-backend
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+    component: backend
+    version: v1.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: sunzi-cerebro
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: sunzi-cerebro
+        component: backend
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Pod Anti-Affinity for high availability
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: component
+                      operator: In
+                      values:
+                        - backend
+                topologyKey: kubernetes.io/hostname
+
+      # Init container for database migration
+      initContainers:
+        - name: db-migration
+          image: ghcr.io/sunzi-cerebro/backend:latest
+          command: ['node', 'scripts/migrate-db.js']
+          envFrom:
+            - configMapRef:
+                name: sunzi-cerebro-backend-config
+            - secretRef:
+                name: sunzi-cerebro-secrets
+          volumeMounts:
+            - name: db-storage
+              mountPath: /data
+
+      containers:
+        - name: backend
+          image: ghcr.io/sunzi-cerebro/backend:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8890
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+            - name: websocket
+              containerPort: 8891
+              protocol: TCP
+
+          # Environment variables from ConfigMap and Secrets
+          envFrom:
+            - configMapRef:
+                name: sunzi-cerebro-backend-config
+            - secretRef:
+                name: sunzi-cerebro-secrets
+
+          # Resource limits and requests
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+
+          # Liveness probe
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8890
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+
+          # Readiness probe
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8890
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+
+          # Startup probe
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8890
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
+
+          # Volume mounts
+          volumeMounts:
+            - name: db-storage
+              mountPath: /data
+            - name: logs
+              mountPath: /app/logs
+            - name: mcp-data
+              mountPath: /app/mcp-data
+            - name: scans
+              mountPath: /app/scans
+
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+      # Image pull secrets
+      imagePullSecrets:
+        - name: registry-credentials
+
+      # Volumes
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: sunzi-cerebro-db-pvc
+        - name: logs
+          persistentVolumeClaim:
+            claimName: sunzi-cerebro-logs-pvc
+        - name: mcp-data
+          persistentVolumeClaim:
+            claimName: sunzi-cerebro-mcp-data-pvc
+        - name: scans
+          persistentVolumeClaim:
+            claimName: sunzi-cerebro-scans-pvc
+
+      # DNS configuration
+      dnsPolicy: ClusterFirst
+
+      # Termination grace period
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+    component: backend
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+  ports:
+    - name: http
+      port: 8890
+      targetPort: 8890
+      protocol: TCP
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+    - name: websocket
+      port: 8891
+      targetPort: 8891
+      protocol: TCP
+  selector:
+    app: sunzi-cerebro
+    component: backend

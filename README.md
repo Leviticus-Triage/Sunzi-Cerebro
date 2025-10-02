@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Sunzi Cerebro<<<<<<< HEAD
 
 # Sunzi Cerebro
@@ -40,6 +41,25 @@ See `docs/` for complete academic and technical documentation.
 # Install dependencies
 npm install
 
-# Start development servers
-npm run start  # Starts both backend (8890) and frontend (3000)
+````markdown
+# Sunzi-Cerebro
+
+Starter-Template: Vite + React + TypeScript
+
+Schnellstart:
+
+```bash
+# im Arbeitsverzeichnis
+npm install
+npm run dev
 ```
+
+Tipps:
+
+- Dev-Server läuft standardmäßig auf http://localhost:5173
+- Build: `npm run build`
+- Preview: `npm run preview`
+
+Hinweis: This repository contains an imported snapshot (branch `import/claude-v4.0`) with additional documentation and deployment assets. Review `exports/claude-import/AUDIT_SUMMARY.md` before using imported deployment manifests.
+
+````

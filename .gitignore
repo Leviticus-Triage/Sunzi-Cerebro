@@ -1,9 +1,17 @@
+<<<<<<< HEAD
 node_modules/
 dist/
 .env
 *.sqlite
 *.db
+```ignore
+node_modules
+dist
+.env
+*.sqlite
+*.db
 .DS_Store
-.vscode/
-public/
+.vscode
+public
 package-lock.json
+```

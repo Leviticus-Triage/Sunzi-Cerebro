@@ -1,0 +1,394 @@
+---
+# Prometheus ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+      external_labels:
+        cluster: 'sunzi-cerebro-production'
+        environment: 'production'
+
+    # Alertmanager configuration
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+                - alertmanager:9093
+
+    # Rule files
+    rule_files:
+      - /etc/prometheus/rules/*.yml
+
+    # Scrape configurations
+    scrape_configs:
+      # Prometheus itself
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # Kubernetes API server
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+
+      # Kubernetes nodes
+      - job_name: 'kubernetes-nodes'
+        kubernetes_sd_configs:
+          - role: node
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+
+      # Kubernetes pods
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - sunzi-cerebro
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+
+      # Backend service
+      - job_name: 'sunzi-cerebro-backend'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - sunzi-cerebro
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_component]
+            action: keep
+            regex: backend
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+
+      # Frontend service (nginx exporter)
+      - job_name: 'sunzi-cerebro-frontend'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - sunzi-cerebro
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_component]
+            action: keep
+            regex: frontend
+
+      # Redis exporter
+      - job_name: 'redis'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - sunzi-cerebro
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_component]
+            action: keep
+            regex: redis
+
+      # Node exporter
+      - job_name: 'node-exporter'
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - source_labels: [__address__]
+            regex: '(.*):10250'
+            replacement: '${1}:9100'
+            target_label: __address__
+
+  # Alert rules
+  alert_rules.yml: |
+    groups:
+      - name: sunzi_cerebro_alerts
+        interval: 30s
+        rules:
+          # Backend alerts
+          - alert: BackendDown
+            expr: up{job="sunzi-cerebro-backend"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              component: backend
+            annotations:
+              summary: "Backend service is down"
+              description: "Backend pod {{ $labels.pod }} is down for more than 1 minute"
+
+          - alert: BackendHighCPU
+            expr: rate(container_cpu_usage_seconds_total{pod=~"sunzi-cerebro-backend.*"}[5m]) > 0.8
+            for: 5m
+            labels:
+              severity: warning
+              component: backend
+            annotations:
+              summary: "Backend CPU usage high"
+              description: "Backend pod {{ $labels.pod }} CPU usage is above 80%"
+
+          - alert: BackendHighMemory
+            expr: container_memory_usage_bytes{pod=~"sunzi-cerebro-backend.*"} / container_spec_memory_limit_bytes{pod=~"sunzi-cerebro-backend.*"} > 0.9
+            for: 5m
+            labels:
+              severity: warning
+              component: backend
+            annotations:
+              summary: "Backend memory usage high"
+              description: "Backend pod {{ $labels.pod }} memory usage is above 90%"
+
+          - alert: BackendHighResponseTime
+            expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="sunzi-cerebro-backend"}[5m])) > 2
+            for: 5m
+            labels:
+              severity: warning
+              component: backend
+            annotations:
+              summary: "Backend response time degraded"
+              description: "P95 response time is above 2 seconds: {{ $value }}s"
+
+          - alert: BackendHighErrorRate
+            expr: rate(http_requests_total{job="sunzi-cerebro-backend",status=~"5.."}[5m]) / rate(http_requests_total{job="sunzi-cerebro-backend"}[5m]) > 0.05
+            for: 5m
+            labels:
+              severity: critical
+              component: backend
+            annotations:
+              summary: "Backend error rate high"
+              description: "Backend error rate is above 5%: {{ $value | humanizePercentage }}"
+
+          # Frontend alerts
+          - alert: FrontendDown
+            expr: up{job="sunzi-cerebro-frontend"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              component: frontend
+            annotations:
+              summary: "Frontend service is down"
+              description: "Frontend pod {{ $labels.pod }} is down for more than 1 minute"
+
+          # Redis alerts
+          - alert: RedisDown
+            expr: up{job="redis"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              component: redis
+            annotations:
+              summary: "Redis is down"
+              description: "Redis pod is down for more than 1 minute"
+
+          - alert: RedisHighMemory
+            expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+            for: 5m
+            labels:
+              severity: warning
+              component: redis
+            annotations:
+              summary: "Redis memory usage high"
+              description: "Redis memory usage is above 90%"
+
+          # Cluster alerts
+          - alert: NodeMemoryPressure
+            expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+            for: 5m
+            labels:
+              severity: warning
+              component: cluster
+            annotations:
+              summary: "Node under memory pressure"
+              description: "Node {{ $labels.node }} is under memory pressure"
+
+          - alert: NodeDiskPressure
+            expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+            for: 5m
+            labels:
+              severity: warning
+              component: cluster
+            annotations:
+              summary: "Node under disk pressure"
+              description: "Node {{ $labels.node }} is under disk pressure"
+
+          - alert: PodCrashLooping
+            expr: rate(kube_pod_container_status_restarts_total{namespace="sunzi-cerebro"}[15m]) > 0
+            for: 5m
+            labels:
+              severity: critical
+              component: cluster
+            annotations:
+              summary: "Pod crash looping"
+              description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is crash looping"
+
+---
+# Prometheus Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sunzi-cerebro
+      component: prometheus
+  template:
+    metadata:
+      labels:
+        app: sunzi-cerebro
+        component: prometheus
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.45.0
+          args:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+            - '--storage.tsdb.retention.time=30d'
+            - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+            - '--web.console.templates=/usr/share/prometheus/consoles'
+            - '--web.enable-lifecycle'
+          ports:
+            - name: web
+              containerPort: 9090
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: storage
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: storage
+          emptyDir: {}
+
+---
+# Prometheus Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: prometheus
+spec:
+  type: ClusterIP
+  ports:
+    - name: web
+      port: 9090
+      targetPort: 9090
+  selector:
+    app: sunzi-cerebro
+    component: prometheus
+
+---
+# Prometheus ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: prometheus
+
+---
+# Prometheus ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+  labels:
+    app: sunzi-cerebro
+    component: prometheus
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - apiGroups:
+      - extensions
+    resources:
+      - ingresses
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics"]
+    verbs: ["get"]
+
+---
+# Prometheus ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+  labels:
+    app: sunzi-cerebro
+    component: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: sunzi-cerebro-monitoring

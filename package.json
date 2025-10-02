@@ -1,13 +1,33 @@
 {
   "name": "sunzi-cerebro",
-  "version": "4.0.0",
+{
+  "name": "sunzi-cerebro",
+  "version": "0.1.0",
   "private": true,
-  "workspaces": ["frontend","backend"],
-  "scripts": {
-    "start:backend": "node backend/index.js",
-    "start:frontend": "cd frontend && npm run dev",
-    "start": "npm run start:backend & npm run start:frontend",
-    "build": "cd frontend && npm run build",
-    "lint": "eslint . || true"
+  {
+    "name": "sunzi-cerebro",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+      "dev": "vite",
+      "build": "vite build",
+      "preview": "vite preview --port 5173",
+      "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+      "format": "prettier --write ."
+    },
+    "dependencies": {
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0"
+    },
+    "devDependencies": {
+      "@types/react": "^18.0.28",
+      "@types/react-dom": "^18.0.11",
+      "@vitejs/plugin-react": "^4.0.0",
+      "eslint": "^8.40.0",
+      "eslint-config-prettier": "^9.0.0",
+      "eslint-plugin-react": "^7.33.2",
+      "prettier": "^2.8.8",
+      "typescript": "^5.4.2",
+      "vite": "^5.0.0"
+    }
   }
-}

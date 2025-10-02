@@ -1,0 +1,112 @@
+---
+# Let's Encrypt ClusterIssuer for Production
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production
+  labels:
+    app: sunzi-cerebro
+spec:
+  acme:
+    # Let's Encrypt production server
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+    # Email for certificate expiration notifications
+    email: admin@sunzi-cerebro.com
+
+    # Secret to store ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-production-key
+
+    # HTTP-01 challenge solver
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+
+---
+# Let's Encrypt ClusterIssuer for Staging (testing)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    app: sunzi-cerebro
+spec:
+  acme:
+    # Let's Encrypt staging server (for testing)
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+
+    # Email for certificate expiration notifications
+    email: admin@sunzi-cerebro.com
+
+    # Secret to store ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-staging-key
+
+    # HTTP-01 challenge solver
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+
+---
+# Certificate resource for main domain
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sunzi-cerebro-tls
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+spec:
+  secretName: sunzi-cerebro-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  dnsNames:
+    - sunzi-cerebro.com
+    - www.sunzi-cerebro.com
+    - api.sunzi-cerebro.com
+  duration: 2160h  # 90 days
+  renewBefore: 720h  # 30 days before expiration
+
+---
+# Certificate for Grafana
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-tls
+  namespace: sunzi-cerebro-monitoring
+  labels:
+    app: sunzi-cerebro
+    component: monitoring
+spec:
+  secretName: grafana-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  dnsNames:
+    - monitoring.sunzi-cerebro.com
+  duration: 2160h
+  renewBefore: 720h
+
+---
+# Certificate for Kibana
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kibana-tls
+  namespace: sunzi-cerebro-logging
+  labels:
+    app: sunzi-cerebro
+    component: logging
+spec:
+  secretName: kibana-tls
+  issuerRef:
+    name: letsencrypt-production
+    kind: ClusterIssuer
+  dnsNames:
+    - logs.sunzi-cerebro.com
+  duration: 2160h
+  renewBefore: 720h

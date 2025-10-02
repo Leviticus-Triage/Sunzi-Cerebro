@@ -1,0 +1,167 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sunzi-cerebro-frontend
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+    component: frontend
+    version: v1.0.0
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: sunzi-cerebro
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: sunzi-cerebro
+        component: frontend
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9113"
+        prometheus.io/path: "/metrics"
+    spec:
+      # Pod Anti-Affinity
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: component
+                      operator: In
+                      values:
+                        - frontend
+                topologyKey: kubernetes.io/hostname
+
+      containers:
+        - name: nginx
+          image: ghcr.io/sunzi-cerebro/frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+
+          # Resource limits
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          # Liveness probe
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+
+          # Readiness probe
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+
+          # Volume mounts
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /var/run
+
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 101  # nginx user
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+
+        # Prometheus nginx exporter sidecar
+        - name: nginx-exporter
+          image: nginx/nginx-prometheus-exporter:0.11.0
+          args:
+            - '-nginx.scrape-uri=http://localhost:80/nginx_status'
+          ports:
+            - name: metrics
+              containerPort: 9113
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+      # Image pull secrets
+      imagePullSecrets:
+        - name: registry-credentials
+
+      # Volumes
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+        - name: cache
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+
+      # DNS configuration
+      dnsPolicy: ClusterFirst
+
+      # Termination grace period
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: sunzi-cerebro
+  labels:
+    app: sunzi-cerebro
+    component: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+    - name: metrics
+      port: 9113
+      targetPort: 9113
+      protocol: TCP
+  selector:
+    app: sunzi-cerebro
+    component: frontend
