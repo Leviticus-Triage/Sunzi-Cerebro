@@ -1,9 +1,6 @@
-<<<<<<< HEAD
-# Sunzi Cerebro<<<<<<< HEAD
-
 # Sunzi Cerebro
 
-Academic thesis project: "Sunzi Cerebro - KI-gestützte modulare Cybersec.-Audit & Penetrationstesting-Plattform mit Compliance-Frameworks" by Daniel Hensen.
+Deployment v0.1.4 - Start 18.04.2026
 
 Academic thesis project: "Sunzi Cerebro - KI-gestützte modulare Cybersec.-Audit & Penetrationstesting-Plattform mit Compliance-Frameworks" by Daniel Hensen.
 
